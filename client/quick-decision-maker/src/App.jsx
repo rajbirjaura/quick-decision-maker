@@ -5,7 +5,7 @@ import CreatePoll from "./pages/CreatePoll";
 import Landing from "./pages/Landing";
 import logo from "/logo.png"
 import bg from "/bg.png" 
-import About from "./pages/about";
+import About from "./pages/About";
 
 const App = () => {
   return (
@@ -30,7 +30,7 @@ const App = () => {
 
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/about" element={<About/>}/>
+        <Route path="/about" element={<About />}/>
         <Route path="/create" element={<CreatePoll />} />
         <Route path="/polls" element={<Home />} />
       </Routes>

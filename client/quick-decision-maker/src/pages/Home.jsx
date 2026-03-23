@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import API from "../api";
 import { Link } from "react-router-dom";
 
@@ -6,19 +6,19 @@ const Home = () => {
   const [polls, setpolls] = useState([]);
   const [time, setTime] = useState(0);
 
-  const fetchpolls = async () => {
+  // Memoize fetchpolls to avoid re-triggering effects unnecessarily
+  const fetchpolls = useCallback(async () => {
     try {
       const res = await API.get("/polls");
       setpolls(res.data);
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching polls:", error);
     }
-  };
+  }, []);
 
   const handleVote = async (pollId, optionIndex) => {
     try {
-      const votedPolls =
-        JSON.parse(localStorage.getItem("votedPolls")) || [];
+      const votedPolls = JSON.parse(localStorage.getItem("votedPolls")) || [];
 
       if (votedPolls.includes(pollId)) {
         alert("You already voted");
@@ -34,7 +34,7 @@ const Home = () => {
 
       fetchpolls();
     } catch (error) {
-      console.log(error);
+      console.error("Vote failed:", error);
     }
   };
 
@@ -46,14 +46,13 @@ const Home = () => {
       await API.delete(`/polls/${pollId}`);
       fetchpolls();
     } catch (error) {
-      console.log(error);
+      console.error("Delete failed:", error);
       alert("Delete failed");
     }
   };
 
   const getTimeLeft = (expiresAt) => {
     const diff = new Date(expiresAt) - new Date();
-
     if (diff <= 0) return "Expired";
 
     const s = Math.floor(diff / 1000) % 60;
@@ -77,10 +76,12 @@ const Home = () => {
     return winningOption ? winningOption.text : null;
   };
 
+  // 1. Initial Data Fetch
   useEffect(() => {
     fetchpolls();
-  }, []);
+  }, [fetchpolls]);
 
+  // 2. Timer for Live Updates
   useEffect(() => {
     const interval = setInterval(() => {
       setTime((p) => p + 1);
@@ -94,24 +95,28 @@ const Home = () => {
         Winners Will Be Announced Here
       </div>
 
-      <div className="w-200 mx-auto space-y-6 mt-6">
+      <div className="max-w-4xl mx-auto space-y-6 mt-6">
         {polls.length === 0 && (
-          <div>
-            <p className="text-center text-gray-800 border border-none bg-white mt-6 rounded-2xl ">No polls found</p>
+          <div className="text-center">
+            <p className="text-gray-800 border border-none bg-white p-6 rounded-2xl shadow-sm">
+              No polls found
+            </p>
             <div className="flex justify-center mt-3">
-            <Link
-                        to="/create"
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl shadow-md font-medium transition"
-                      >
-                        Start a Poll
-                      </Link></div>
+              <Link
+                to="/create"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl shadow-md font-medium transition"
+              >
+                Start a Poll
+              </Link>
             </div>
-          
+          </div>
         )}
 
         {polls.map((poll) => {
           const liveStatus = getLiveStatus(poll.expiresAt);
           const liveWinner = getLiveWinner(poll);
+          const votedPolls = JSON.parse(localStorage.getItem("votedPolls")) || [];
+          const alreadyVoted = votedPolls.includes(poll._id);
 
           return (
             <div
@@ -165,17 +170,13 @@ const Home = () => {
                       Time Left
                     </p>
                     <p className="text-lg font-bold text-[#e92f0d]">
-                      {getTimeLeft(poll.expiresAt, time)}
+                      {getTimeLeft(poll.expiresAt)}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   {poll.options.map((option, index) => {
-                    const votedPolls =
-                      JSON.parse(localStorage.getItem("votedPolls")) || [];
-
-                    const alreadyVoted = votedPolls.includes(poll._id);
                     const isWinner = liveWinner === option.text;
                     const percent =
                       poll.totalVotes === 0
